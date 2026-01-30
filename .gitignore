@@ -1,0 +1,65 @@
+# Ignore backend and frontend folders (they have their own repos)
+bridgeai-backend/
+bridgeai-frontend/
+
+# Environment files (sensitive)
+.env.production
+*.env.production
+.env
+.env.local
+
+# Docker volumes and data
+mysql_data/
+chroma_data/
+
+# SSL certificates
+ssl/
+*.pem
+*.key
+*.crt
+
+# Backups
+backup_*.sql
+*.backup
+backups/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Claude CLI (local only)
+.claude/
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Node modules (if any scripts use node)
+node_modules/
+
+# Python cache (if any scripts use python)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Docker build cache
+.dockerignore
+
+# Git
+.git/

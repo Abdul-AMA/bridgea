@@ -1,0 +1,98 @@
+==========================================
+VPS DEPLOYMENT CHECKLIST - bridge-ai.dev
+==========================================
+
+BEFORE YOU START:
+☐ Your GitHub repository is ready
+☐ .env.production is NOT committed to Git (already in .gitignore)
+☐ DNS records point to your VPS IP:
+  - bridge-ai.dev → VPS_IP
+  - www.bridge-ai.dev → VPS_IP
+  - api.bridge-ai.dev → VPS_IP
+
+==========================================
+FILES TO COPY TO VPS (5 files only):
+==========================================
+☐ docker-compose.yml
+☐ .env.production
+☐ .gitignore
+☐ nginx.conf
+☐ DEPLOY.md
+
+==========================================
+DEPLOYMENT STEPS:
+==========================================
+
+1. ON VPS - Clone Repository
+   ☐ ssh root@your-vps-ip
+   ☐ cd /root
+   ☐ git clone https://github.com/yourusername/bridgeai.git
+   ☐ cd bridgeai
+
+2. FROM LOCAL - Copy Config Files
+   ☐ cd /home/abood/coding/bridgeai
+   ☐ scp docker-compose.yml root@vps-ip:/root/bridgeai/
+   ☐ scp .env.production root@vps-ip:/root/bridgeai/
+   ☐ scp .gitignore root@vps-ip:/root/bridgeai/
+   ☐ scp nginx.conf root@vps-ip:/root/bridgeai/
+   ☐ scp DEPLOY.md root@vps-ip:/root/bridgeai/
+
+3. ON VPS - Start Services
+   ☐ ssh root@your-vps-ip
+   ☐ cd /root/bridgeai
+   ☐ chmod 600 .env.production
+   ☐ docker-compose --env-file .env.production up -d
+   ☐ docker-compose logs -f
+
+4. VERIFY
+   ☐ docker-compose ps (all containers running)
+   ☐ curl http://localhost:8000/health (backend works)
+   ☐ curl http://localhost:3000 (frontend works)
+
+5. SETUP SSL
+   ☐ sudo apt install certbot python3-certbot-nginx -y
+   ☐ sudo certbot --nginx -d bridge-ai.dev -d www.bridge-ai.dev -d api.bridge-ai.dev
+
+6. TEST
+   ☐ Visit https://bridge-ai.dev
+   ☐ Visit https://api.bridge-ai.dev/docs
+
+==========================================
+YOUR CONFIGURATION:
+==========================================
+Domain: bridge-ai.dev
+Database: Docker MySQL (bridgeai_db)
+AI: Claude 4.5 Sonnet + Haiku
+Email: Mailosaur (dwm6sjcz@mailosaur.net)
+
+==========================================
+WHAT DOCKER DOES FOR YOU:
+==========================================
+✓ Creates MySQL database
+✓ Sets up ChromaDB
+✓ Installs Python dependencies
+✓ Installs Node.js dependencies
+✓ Runs database migrations
+✓ Starts all services
+
+==========================================
+LATER UPDATES:
+==========================================
+When you push code to GitHub:
+1. git push origin main (on local)
+2. ssh root@vps-ip (connect to VPS)
+3. cd /root/bridgeai
+4. git pull origin main
+5. docker-compose --env-file .env.production up -d --build
+
+==========================================
+NEVER COMMIT TO GIT:
+==========================================
+✗ .env.production
+✗ .env (backend/frontend local files)
+✗ venv/
+✗ node_modules/
+✗ SSL certificates
+✗ Database backups
+
+==========================================

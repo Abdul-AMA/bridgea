@@ -1,0 +1,150 @@
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: bridgeai-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-bridgeai_db}
+      MYSQL_USER: ${MYSQL_USER:-bridgeai}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-bridgeaipass}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d
+    networks:
+      - bridgeai-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ChromaDB Vector Database
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: bridgeai-chromadb
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    networks:
+      - bridgeai-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend FastAPI
+  backend:
+    build:
+      context: ./bridgeai-backend
+      dockerfile: Dockerfile
+      args:
+        # Force rebuild dependencies on VPS (production)
+        REBUILD_DEPS: ${REBUILD_DEPS:-true}
+    container_name: bridgeai-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Database
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-bridgeai}:${MYSQL_PASSWORD:-bridgeaipass}@mysql:3306/${MYSQL_DATABASE:-bridgeai_db}
+
+      # Security
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+
+      # AI/LLM Configuration - Claude (Anthropic)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      LLM_DEFAULT_MODEL: ${LLM_DEFAULT_MODEL:-claude-sonnet-4-5-20250929}
+      LLM_CLARIFICATION_MODEL: ${LLM_CLARIFICATION_MODEL:-claude-sonnet-4-5-20250929}
+      LLM_CLARIFICATION_TEMPERATURE: ${LLM_CLARIFICATION_TEMPERATURE:-0.3}
+      LLM_CLARIFICATION_MAX_TOKENS: ${LLM_CLARIFICATION_MAX_TOKENS:-2048}
+      LLM_TEMPLATE_FILLER_MODEL: ${LLM_TEMPLATE_FILLER_MODEL:-claude-sonnet-4-5-20250929}
+      LLM_TEMPLATE_FILLER_TEMPERATURE: ${LLM_TEMPLATE_FILLER_TEMPERATURE:-0.2}
+      LLM_TEMPLATE_FILLER_MAX_TOKENS: ${LLM_TEMPLATE_FILLER_MAX_TOKENS:-4096}
+      LLM_SUGGESTIONS_MODEL: ${LLM_SUGGESTIONS_MODEL:-claude-haiku-4-5-20251001}
+      LLM_SUGGESTIONS_TEMPERATURE: ${LLM_SUGGESTIONS_TEMPERATURE:-0.7}
+      LLM_SUGGESTIONS_MAX_TOKENS: ${LLM_SUGGESTIONS_MAX_TOKENS:-2000}
+
+      # ChromaDB
+      CHROMA_SERVER_HOST: chromadb
+      CHROMA_SERVER_HTTP_PORT: 8000
+      CHROMA_COLLECTION_NAME: ${CHROMA_COLLECTION_NAME:-project_memories}
+      CHROMA_EMBEDDING_MODEL: all-MiniLM-L6-v2
+
+      # SMTP (Optional)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@bridgeai.com}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-BridgeAI}
+
+      # Application
+      FRONTEND_URL: ${FRONTEND_URL:-http://frontend:3000}
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-["http://localhost:3000","https://yourdomain.com"]}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+
+    volumes:
+      - ./bridgeai-backend/chroma_data:/app/chroma_data
+    depends_on:
+      mysql:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
+    networks:
+      - bridgeai-network
+
+  # Frontend Next.js
+  frontend:
+    build:
+      context: ./bridgeai-frontend
+      dockerfile: Dockerfile
+    container_name: bridgeai-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      NODE_ENV: production
+    depends_on:
+      - backend
+    networks:
+      - bridgeai-network
+
+  # Nginx Reverse Proxy (Optional but recommended)
+  nginx:
+    image: nginx:alpine
+    container_name: bridgeai-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - bridgeai-network
+
+networks:
+  bridgeai-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
+  chroma_data:
+    driver: local
