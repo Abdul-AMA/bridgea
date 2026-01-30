@@ -29,7 +29,7 @@ bridgeai/
 
 ```bash
 # Clone this deployment config repo
-git clone https://github.com/Abdul-AMA//bridgeai-deployment.git bridgeai
+git clone https://github.com/Abdul-AMA//bridgeai.git
 cd bridgeai
 
 # Clone backend into the folder
