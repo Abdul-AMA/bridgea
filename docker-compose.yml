@@ -36,12 +36,12 @@ services:
       - ANONYMIZED_TELEMETRY=FALSE
     networks:
       - bridgeai-network
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/heartbeat')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    # healthcheck:
+    #   test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/heartbeat')"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 40s
 
   # Backend FastAPI
   backend:
@@ -102,7 +102,7 @@ services:
       mysql:
         condition: service_healthy
       chromadb:
-        condition: service_healthy
+        condition: service_started
     networks:
       - bridgeai-network
 
