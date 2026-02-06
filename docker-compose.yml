@@ -53,6 +53,9 @@ services:
         REBUILD_DEPS: ${REBUILD_DEPS:-true}
     container_name: bridgeai-backend
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     ports:
       - "8000:8000"
     environment:
@@ -87,13 +90,10 @@ services:
       CHROMA_COLLECTION_NAME: ${CHROMA_COLLECTION_NAME:-project_memories}
       CHROMA_EMBEDDING_MODEL: all-MiniLM-L6-v2
 
-      # SMTP (Optional)
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@bridgeai.com}
-      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-BridgeAI}
+      # Email (Resend API)
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-admin@bridge-ai.dev}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-BridgeAI}
 
       # Application
       FRONTEND_URL: ${FRONTEND_URL:-http://frontend:3000}
@@ -152,6 +152,11 @@ services:
 networks:
   bridgeai-network:
     driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-bridgeai
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.driver.mtu: "1500"
 
 volumes:
   mysql_data:
